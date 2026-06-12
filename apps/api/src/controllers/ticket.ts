@@ -57,7 +57,7 @@ export function ticketRoutes(fastify: FastifyInstance) {
           detail: JSON.stringify(detail),
           priority: priority ? priority : "low",
           email,
-          type: type ? type.toLowerCase() : "support",
+          type: type || "Anfrage",
           createdBy: createdBy
             ? {
                 id: createdBy.id,
@@ -161,7 +161,7 @@ export function ticketRoutes(fastify: FastifyInstance) {
           detail: JSON.stringify(detail),
           priority: priority ? priority : "low",
           email,
-          type: type ? type.toLowerCase() : "support",
+          type: type || "Anfrage",
           createdBy: createdBy
             ? {
                 id: createdBy.id,

@@ -18,13 +18,13 @@ function classNames(...classes) {
 }
 
 const type = [
-  { id: 5, name: "Incident" },
-  { id: 1, name: "Service" },
-  { id: 2, name: "Feature" },
-  { id: 3, name: "Bug" },
-  { id: 4, name: "Maintenance" },
-  { id: 6, name: "Access" },
-  { id: 8, name: "Feedback" },
+  { id: 1, name: "Antrag auf Annahme" },
+  { id: 2, name: "Antrag auf Zulassung" },
+  { id: 3, name: "Antrag re PBP" },
+  { id: 4, name: "Antrag PEP" },
+  { id: 5, name: "Antrag (weitere)" },
+  { id: 6, name: "Anfrage" },
+  { id: 7, name: "Diskussionsthema" },
 ];
 
 export default function CreateTicketModal({ keypress, setKeyPressDown }) {
@@ -47,7 +47,7 @@ export default function CreateTicketModal({ keypress, setKeyPressDown }) {
   const [priority, setPriority] = useState("medium");
   const [options, setOptions] = useState<any>();
   const [users, setUsers] = useState<any>();
-  const [selected, setSelected] = useState<any>(type[3]);
+  const [selected, setSelected] = useState<any>(type[0]);
   const [files, setFiles] = useState<File[]>([]);
 
   const fetchClients = async () => {

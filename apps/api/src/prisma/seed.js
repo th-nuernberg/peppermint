@@ -21,14 +21,25 @@ async function main() {
       },
     });
 
+    // "Responsible" options (the relabelled Client picker on ticket creation).
     await prisma.client.upsert({
-      where: { email: `internal@admin.com` },
+      where: { email: `leitung@pzticket.local` },
       update: {},
       create: {
-        email: `internal@admin.com`,
-        name: "internal",
-        contactName: "admin",
-        number: "123456789",
+        email: `leitung@pzticket.local`,
+        name: "leitung",
+        contactName: "Leitung",
+        active: true,
+      },
+    });
+
+    await prisma.client.upsert({
+      where: { email: `promotionsausschuss@pzticket.local` },
+      update: {},
+      create: {
+        email: `promotionsausschuss@pzticket.local`,
+        name: "promotionsausschuss",
+        contactName: "Promotionsausschuss",
         active: true,
       },
     });
