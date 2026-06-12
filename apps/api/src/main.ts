@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import "dotenv/config";
 import Fastify, { FastifyInstance } from "fastify";
-import multer from "fastify-multer";
+import multipart from "@fastify/multipart";
 import fs from "fs";
 
 import { exec } from "child_process";
@@ -32,7 +32,9 @@ server.register(cors, {
   allowedHeaders: ["Content-Type", "Authorization", "Accept"],
 });
 
-server.register(multer.contentParser);
+server.register(multipart, {
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB per attachment
+});
 
 registerRoutes(server);
 

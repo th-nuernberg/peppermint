@@ -48,6 +48,7 @@ export default function CreateTicketModal({ keypress, setKeyPressDown }) {
   const [options, setOptions] = useState<any>();
   const [users, setUsers] = useState<any>();
   const [selected, setSelected] = useState<any>(type[3]);
+  const [files, setFiles] = useState<File[]>([]);
 
   const fetchClients = async () => {
     await fetch(`/api/v1/clients/all`, {
@@ -112,8 +113,27 @@ export default function CreateTicketModal({ keypress, setKeyPressDown }) {
       }),
     })
       .then((res) => res.json())
-      .then((res) => {
+      .then(async (res) => {
         if (res.success === true) {
+          // Upload any selected attachments to the freshly-created ticket.
+          if (files.length > 0 && res.id) {
+            await Promise.all(
+              files.map((f) => {
+                const formData = new FormData();
+                formData.append("file", f);
+                formData.append("user", user.id);
+                return fetch(
+                  `/api/v1/storage/ticket/${res.id}/upload/single`,
+                  {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: formData,
+                  }
+                );
+              })
+            );
+          }
+          setFiles([]);
           toast({
             variant: "default",
             title: "Success",
@@ -580,6 +600,34 @@ export default function CreateTicketModal({ keypress, setKeyPressDown }) {
                           )}
                         </Listbox>
                       </>
+                    )}
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-semibold text-foreground">
+                      Attachments
+                    </label>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) =>
+                        setFiles(
+                          e.target.files ? Array.from(e.target.files) : []
+                        )
+                      }
+                      className="block w-full cursor-pointer rounded-md border border-dashed border-gray-300 p-2 text-sm text-foreground file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-green-600 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-green-700"
+                    />
+                    {files.length > 0 && (
+                      <ul className="mt-1 list-disc pl-5">
+                        {files.map((f, i) => (
+                          <li
+                            key={i}
+                            className="truncate text-xs text-foreground"
+                          >
+                            {f.name}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
 

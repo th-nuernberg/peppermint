@@ -525,6 +525,9 @@ export default function Ticket() {
           `/api/v1/storage/ticket/${router.query.id}/upload/single`,
           {
             method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
             body: formData,
           }
         );
@@ -538,6 +541,29 @@ export default function Ticket() {
       } catch (error) {
         console.error(error);
       }
+    }
+  };
+
+  const downloadFile = async (f: any) => {
+    try {
+      const res = await fetch(`/api/v1/storage/ticket/file/${f.id}/download`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = f.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -1276,6 +1302,50 @@ export default function Ticket() {
                         hideInitial={false}
                       />
                     )}
+
+                    <div className="border-t border-gray-200 pt-2 mt-2">
+                      <div className="flex flex-row items-center justify-between">
+                        <span className="text-sm font-medium text-gray-500 dark:text-white">
+                          Attachments
+                        </span>
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-gray-500 hover:underline dark:text-white"
+                          onClick={handleButtonClick}
+                          disabled={data.ticket.locked}
+                        >
+                          upload
+                          <input
+                            id="file"
+                            type="file"
+                            hidden
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                          />
+                        </button>
+                      </div>
+                      <div className="mt-1 space-y-0.5">
+                        {data.ticket.files && data.ticket.files.length > 0 ? (
+                          data.ticket.files.map((f: any) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => downloadFile(f)}
+                              title={`Download ${f.filename}`}
+                              className="block w-full truncate rounded px-1 py-0.5 text-left hover:bg-gray-200 dark:hover:bg-gray-700"
+                            >
+                              <span className="text-xs text-blue-600 hover:underline dark:text-blue-400">
+                                {f.filename}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-500 dark:text-white">
+                            No attachments
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
                     {/* <div className="border-t border-gray-200">
                   <div className="flex flex-row items-center justify-between mt-2">

@@ -15,15 +15,15 @@ RUN npm i -g prisma
 RUN npm i -g typescript@latest -g --force 
 
 # Copy the source code for both apps
-COPY apps/api ./apps/api
+# Client first, so API-only source changes don't bust the (slow) client build cache.
 COPY apps/client ./apps/client
-
-RUN cd apps/api && npm install --production
-RUN cd apps/api && npm i --save-dev @types/node && npm run build
-
 RUN cd apps/client && yarn install --production --ignore-scripts --prefer-offline --network-timeout 1000000
 RUN cd apps/client && yarn add --dev typescript @types/node --network-timeout 1000000
 RUN cd apps/client && yarn build
+
+COPY apps/api ./apps/api
+RUN cd apps/api && npm install --production
+RUN cd apps/api && npm i --save-dev @types/node && npm run build
 
 FROM node:lts AS runner
 
