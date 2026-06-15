@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { pipeline } from "stream/promises";
 import jwt from "jsonwebtoken";
 import { prisma } from "../prisma";
+import { requirePermission } from "../lib/roles";
 
 const UPLOAD_DIR = "uploads";
 
@@ -14,6 +15,8 @@ export function objectStoreRoutes(fastify: FastifyInstance) {
   // Uses @fastify/multipart (fastify-multer is incompatible with fastify 5).
   fastify.post(
     "/api/v1/storage/ticket/:id/upload/single",
+    // Adding an attachment writes to a ticket: allow creators or updaters.
+    { preHandler: requirePermission(["issue::create", "issue::update"], false) },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id }: any = request.params;
 
@@ -60,6 +63,8 @@ export function objectStoreRoutes(fastify: FastifyInstance) {
   // Download a ticket attachment.
   fastify.get(
     "/api/v1/storage/ticket/file/:fileId/download",
+    // Reading an attachment requires being able to read issues.
+    { preHandler: requirePermission("issue::read") },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { fileId }: any = request.params;
 
