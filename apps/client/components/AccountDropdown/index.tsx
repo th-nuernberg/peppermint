@@ -49,7 +49,7 @@ export function AccountDropdown() {
     }).then((res) => res.json());
 
     if (res.success) {
-      deleteCookie("session");
+      deleteCookie("session", { path: "/" });
       location.reload();
     }
   }

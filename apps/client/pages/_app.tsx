@@ -30,6 +30,19 @@ import GlobalShortcut from "@/shadcn/block/GlobalShortcut";
 import { Toaster } from "@/shadcn/ui/toaster";
 
 import { SidebarProvider } from "@/shadcn/ui/sidebar";
+import axios from "axios";
+
+// Sub-path deployment (/peppermint): Next.js basePath prefixes pages, assets,
+// <Link> and router.push automatically — but raw fetch("/api/..") and axios
+// requests are not, so prefix them here to reach the backend through the proxy.
+if (typeof window !== "undefined") {
+  const _fetch = window.fetch.bind(window);
+  window.fetch = (input: any, init?: any) =>
+    typeof input === "string" && input.startsWith("/api/")
+      ? _fetch("/peppermint" + input, init)
+      : _fetch(input, init);
+  axios.defaults.baseURL = "/peppermint";
+}
 
 const queryClient = new QueryClient();
 

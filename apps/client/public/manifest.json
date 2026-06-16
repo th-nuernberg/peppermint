@@ -1,7 +1,7 @@
 {
   "name": "Peppermint",
   "short_name": "Peppermint",
-  "start_url": "/",
+  "start_url": "/peppermint/",
   "display": "standalone",
   "background_color": "#ffffff",
   "description": "An offline-first Next.js app",

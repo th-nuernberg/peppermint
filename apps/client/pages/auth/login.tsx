@@ -23,7 +23,7 @@ export default function Login({}) {
         .then((res) => res.json())
         .then(async (res) => {
           if (res.user) {
-            setCookie("session", res.token);
+            setCookie("session", res.token, { path: "/" });
             if (res.user.external_user) {
               router.push("/portal");
             } else {

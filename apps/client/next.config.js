@@ -6,7 +6,8 @@ const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: false,
+  // Service worker disabled: its scope/caching is unreliable under a URL sub-path.
+  disable: true,
 });
 
 module.exports = withPlugins(
@@ -15,6 +16,10 @@ module.exports = withPlugins(
     reactStrictMode: false,
     swcMinify: true,
     output: 'standalone',
+
+    // Deployed under a URL sub-path: https://kiz1.in.ohmportal.de/peppermint
+    // basePath prefixes pages, /_next assets, <Link> and router automatically.
+    basePath: '/peppermint',
 
     // The upstream client has pre-existing build-time type/lint errors (e.g. the
     // CSS side-effect import in components/BlockEditor). SWC still compiles
