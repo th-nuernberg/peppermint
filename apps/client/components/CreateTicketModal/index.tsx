@@ -4,7 +4,7 @@ import { ChevronUpDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { getCookie } from "cookies-next";
 import useTranslation from "next-translate/useTranslation";
 import { useRouter } from "next/router";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useUser } from "../../store/session";
 
 import { toast } from "@/shadcn/hooks/use-toast";
@@ -49,6 +49,39 @@ export default function CreateTicketModal({ keypress, setKeyPressDown }) {
   const [users, setUsers] = useState<any>();
   const [selected, setSelected] = useState<any>(type[0]);
   const [files, setFiles] = useState<File[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Append dropped/selected files to the list, de-duplicating by name+size+mtime.
+  const addFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    setFiles((prev) => {
+      const merged = [...prev];
+      for (const f of Array.from(list)) {
+        const dup = merged.some(
+          (e) =>
+            e.name === f.name &&
+            e.size === f.size &&
+            e.lastModified === f.lastModified
+        );
+        if (!dup) merged.push(f);
+      }
+      return merged;
+    });
+  };
+
+  // While the modal is open, stop the browser from opening a file dropped outside
+  // the drop zone (which would navigate away and discard the half-filled form).
+  useEffect(() => {
+    if (!open) return;
+    const prevent = (e: DragEvent) => e.preventDefault();
+    window.addEventListener("dragover", prevent);
+    window.addEventListener("drop", prevent);
+    return () => {
+      window.removeEventListener("dragover", prevent);
+      window.removeEventListener("drop", prevent);
+    };
+  }, [open]);
 
   const fetchClients = async () => {
     await fetch(`/api/v1/clients/all`, {
@@ -607,24 +640,66 @@ export default function CreateTicketModal({ keypress, setKeyPressDown }) {
                     <label className="mb-1 block text-xs font-semibold text-foreground">
                       Attachments
                     </label>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={(e) =>
-                        setFiles(
-                          e.target.files ? Array.from(e.target.files) : []
-                        )
-                      }
-                      className="block w-full cursor-pointer rounded-md border border-dashed border-gray-300 p-2 text-sm text-foreground file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-green-600 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-green-700"
-                    />
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragActive(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragActive(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragActive(false);
+                        addFiles(e.dataTransfer.files);
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className={classNames(
+                        "cursor-pointer rounded-md border border-dashed p-4 text-center text-xs transition-colors",
+                        dragActive
+                          ? "border-green-600 bg-green-600/10 text-green-700"
+                          : "border-gray-300 text-foreground hover:border-green-600"
+                      )}
+                    >
+                      Drag &amp; drop files here, or{" "}
+                      <span className="font-medium text-green-700 underline">
+                        browse
+                      </span>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          addFiles(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
                     {files.length > 0 && (
-                      <ul className="mt-1 list-disc pl-5">
+                      <ul className="mt-2 space-y-1">
                         {files.map((f, i) => (
                           <li
-                            key={i}
-                            className="truncate text-xs text-foreground"
+                            key={`${f.name}-${f.lastModified}-${i}`}
+                            className="flex items-center justify-between text-xs text-foreground"
                           >
-                            {f.name}
+                            <span className="truncate">{f.name}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFiles((prev) =>
+                                  prev.filter((_, idx) => idx !== i)
+                                )
+                              }
+                              className="ml-2 shrink-0 text-gray-400 hover:text-red-600"
+                              aria-label={`Remove ${f.name}`}
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
                           </li>
                         ))}
                       </ul>
