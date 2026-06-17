@@ -34,7 +34,7 @@ import { useQuery } from "react-query";
 import { useUser } from "../../store/session";
 
 async function getUserTickets(token: any) {
-  const res = await fetch(`/api/v1/tickets/user/open`, {
+  const res = await fetch(`/api/v1/tickets/open`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -76,7 +76,7 @@ export default function Tickets() {
     }
   );
 
-  const user = useUser();
+  const { user } = useUser();
 
   const high = "bg-red-100 text-red-800";
   const low = "bg-blue-100 text-blue-800";
@@ -95,6 +95,14 @@ export default function Tickets() {
     const saved = localStorage.getItem("open_selectedAssignees");
     return saved ? JSON.parse(saved) : [];
   });
+  // Responsible (ticket.client) filter — defaulted to the user's role(s) on first visit.
+  const [selectedResponsibles, setSelectedResponsibles] = useState<string[]>(
+    () => {
+      const saved = localStorage.getItem("open_selectedResponsibles");
+      return saved ? JSON.parse(saved) : [];
+    }
+  );
+  const [responsibleInit, setResponsibleInit] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
@@ -118,10 +126,31 @@ export default function Tickets() {
     );
   }, [selectedAssignees]);
 
+  // First visit (no saved Responsible filter): default it to the user's role(s).
+  // Admins and users without a role are left unfiltered (they see everything).
+  useEffect(() => {
+    if (responsibleInit || !user) return;
+    const saved = localStorage.getItem("open_selectedResponsibles");
+    if (saved === null && !user.isAdmin) {
+      const roles = Array.isArray(user.roles) ? user.roles : [];
+      if (roles.length > 0) setSelectedResponsibles(roles);
+    }
+    setResponsibleInit(true);
+  }, [user, responsibleInit]);
+
+  useEffect(() => {
+    if (!responsibleInit) return; // don't clobber storage before the default is set
+    localStorage.setItem(
+      "open_selectedResponsibles",
+      JSON.stringify(selectedResponsibles)
+    );
+  }, [selectedResponsibles, responsibleInit]);
+
   const clearAllFilters = () => {
     setSelectedPriorities([]);
     setSelectedStatuses([]);
     setSelectedAssignees([]);
+    setSelectedResponsibles([]); // persisted by its effect -> stays cleared
     localStorage.removeItem("open_selectedPriorities");
     localStorage.removeItem("open_selectedStatuses");
     localStorage.removeItem("open_selectedAssignees");
@@ -151,6 +180,14 @@ export default function Tickets() {
     );
   };
 
+  const handleResponsibleToggle = (responsible: string) => {
+    setSelectedResponsibles((prev) =>
+      prev.includes(responsible)
+        ? prev.filter((r) => r !== responsible)
+        : [...prev, responsible]
+    );
+  };
+
   const filteredTickets = data
     ? data.tickets.filter((ticket) => {
         const priorityMatch =
@@ -162,12 +199,22 @@ export default function Tickets() {
         const assigneeMatch =
           selectedAssignees.length === 0 ||
           selectedAssignees.includes(ticket.assignedTo?.name || "Unassigned");
+        const responsibleMatch =
+          selectedResponsibles.length === 0 ||
+          selectedResponsibles.includes(ticket.client?.name || "Unassigned");
 
-        return priorityMatch && statusMatch && assigneeMatch;
+        return (
+          priorityMatch && statusMatch && assigneeMatch && responsibleMatch
+        );
       })
     : [];
 
-  type FilterType = "priority" | "status" | "assignee" | null;
+  type FilterType =
+    | "priority"
+    | "status"
+    | "assignee"
+    | "responsible"
+    | null;
   const [activeFilter, setActiveFilter] = useState<FilterType>(null);
   const [filterSearch, setFilterSearch] = useState("");
 
@@ -191,6 +238,15 @@ export default function Tickets() {
       .filter((name, index, self) => self.indexOf(name) === index);
     return assignees?.filter((assignee) =>
       assignee.toLowerCase().includes(filterSearch.toLowerCase())
+    );
+  }, [data?.tickets, filterSearch]);
+
+  const filteredResponsibles = useMemo(() => {
+    const names = data?.tickets
+      .map((t: any) => t.client?.name || "Unassigned")
+      .filter((name, index, self) => self.indexOf(name) === index);
+    return names?.filter((name) =>
+      name.toLowerCase().includes(filterSearch.toLowerCase())
     );
   }, [data?.tickets, filterSearch]);
 
@@ -349,6 +405,11 @@ export default function Tickets() {
                             >
                               Assigned To
                             </CommandItem>
+                            <CommandItem
+                              onSelect={() => setActiveFilter("responsible")}
+                            >
+                              Responsible
+                            </CommandItem>
                           </CommandGroup>
                         </CommandList>
                       </Command>
@@ -481,6 +542,49 @@ export default function Tickets() {
                           </CommandGroup>
                         </CommandList>
                       </Command>
+                    ) : activeFilter === "responsible" ? (
+                      <Command>
+                        <CommandInput
+                          placeholder="Search responsible..."
+                          value={filterSearch}
+                          onValueChange={setFilterSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>No responsibles found.</CommandEmpty>
+                          <CommandGroup heading="Responsible">
+                            {filteredResponsibles?.map((name) => (
+                              <CommandItem
+                                key={name}
+                                onSelect={() => handleResponsibleToggle(name)}
+                              >
+                                <div
+                                  className={cn(
+                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                    selectedResponsibles.includes(name)
+                                      ? "bg-primary text-primary-foreground"
+                                      : "opacity-50 [&_svg]:invisible"
+                                  )}
+                                >
+                                  <CheckIcon className={cn("h-4 w-4")} />
+                                </div>
+                                <span className="capitalize">{name}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                          <CommandSeparator />
+                          <CommandGroup>
+                            <CommandItem
+                              onSelect={() => {
+                                setActiveFilter(null);
+                                setFilterSearch("");
+                              }}
+                              className="justify-center text-center"
+                            >
+                              Back to filters
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
                     ) : null}
                   </PopoverContent>
                 </Popover>
@@ -511,10 +615,19 @@ export default function Tickets() {
                     />
                   ))}
 
+                  {selectedResponsibles.map((responsible) => (
+                    <FilterBadge
+                      key={`responsible-${responsible}`}
+                      text={`Responsible: ${responsible}`}
+                      onRemove={() => handleResponsibleToggle(responsible)}
+                    />
+                  ))}
+
                   {/* Clear all filters button - only show if there are filters */}
                   {(selectedPriorities.length > 0 ||
                     selectedStatuses.length > 0 ||
-                    selectedAssignees.length > 0) && (
+                    selectedAssignees.length > 0 ||
+                    selectedResponsibles.length > 0) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -533,10 +646,10 @@ export default function Tickets() {
                 let p = ticket.priority;
                 let badge;
 
-                if (p === "Low") {
+                if (p === "low") {
                   badge = low;
                 }
-                if (p === "Normal") {
+                if (p === "medium") {
                   badge = normal;
                 }
                 if (p === "high") {

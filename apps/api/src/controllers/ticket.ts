@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import fs from "fs";
 import axios from "axios";
 import { checkToken } from "../lib/jwt";
 
@@ -832,6 +833,20 @@ export function ticketRoutes(fastify: FastifyInstance) {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const { id }: any = request.body;
+
+      // TicketFile has no onDelete cascade, so remove a ticket's attachments
+      // (DB rows + files on disk) first — otherwise the FK blocks the delete (500).
+      const files = await prisma.ticketFile.findMany({
+        where: { ticketId: id },
+      });
+      for (const f of files) {
+        try {
+          fs.unlinkSync(f.path);
+        } catch (e) {
+          // file already gone on disk — ignore
+        }
+      }
+      await prisma.ticketFile.deleteMany({ where: { ticketId: id } });
 
       await prisma.ticket.delete({
         where: { id: id },

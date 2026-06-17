@@ -756,6 +756,7 @@ export function authRoutes(fastify: FastifyInstance) {
 
       let user = await prisma.user.findUnique({
         where: { id: session!.userId },
+        include: { roles: true },
       });
 
       if (!user) {
@@ -787,6 +788,7 @@ export function authRoutes(fastify: FastifyInstance) {
         version: config!.client_version,
         notifcations,
         external_user: user!.external_user,
+        roles: user!.roles.map((r: any) => r.name),
       };
 
       await tracking("user_profile", {});
